@@ -1,16 +1,18 @@
+use ansi_term::Colour;
 use git2::{ErrorCode::UnbornBranch, Repository, RepositoryState, Status};
 
+use std::fmt::Display;
 use std::path::{Path, PathBuf};
 
 //borrow from https://github.com/starship/starship/blob/master/src/modules/git_status.rs
 #[derive(Default, Debug, Copy, Clone)]
 struct RepoStatus {
-    conflicted: usize,
-    deleted: usize,
-    renamed: usize,
-    modified: usize,
-    staged: usize,
-    untracked: usize,
+    pub conflicted: usize,
+    pub deleted: usize,
+    pub renamed: usize,
+    pub modified: usize,
+    pub staged: usize,
+    pub untracked: usize,
 }
 
 impl RepoStatus {
@@ -36,6 +38,15 @@ impl RepoStatus {
 
     fn is_untracked(status: Status) -> bool {
         status.is_wt_new()
+    }
+
+    fn is_clean(&self) -> bool {
+        self.conflicted == 0
+            && self.deleted == 0
+            && self.renamed == 0
+            && self.modified == 0
+            && self.staged == 0
+            && self.untracked == 0
     }
 
     fn add(&mut self, s: Status) {
@@ -132,16 +143,82 @@ impl GitRepo {
 
         Ok(repo_status)
     }
+
+    fn branch_string(&self) -> impl Display {
+        Colour::Cyan
+            .bold()
+            .paint(self.branch().or(Some("unknown".to_owned())).unwrap())
+    }
+
+    fn ahead_behind_string(&self) -> Box<dyn Display> {
+        let ahead_behind = self.get_ahead_behind();
+        if ahead_behind.is_err() {
+            return Box::new("");
+        }
+        let (ahead, behind) = ahead_behind.unwrap();
+
+        if ahead == 0 && behind == 0 {
+            return Box::new(" ✔");
+        }
+
+        let get_mark = |count: usize, mark: &'static str| -> String {
+            if count > 0 {
+                format!("{}{}", mark, count)
+            } else {
+                String::default()
+            }
+        };
+
+        Box::new(format!(
+            " - {}{}",
+            get_mark(ahead, "↑"),
+            get_mark(behind, "↓")
+        ))
+    }
+
+    fn status_string(&self) -> Box<dyn Display> {
+        let status = self.status();
+        if status.is_err() {
+            return Box::new(Colour::Red.paint("unknown"));
+        }
+        let status = status.unwrap();
+        if status.is_clean() {
+            return Box::new(Colour::Green.paint("✔"));
+        }
+
+        let get_ico = |count: usize, mark: &'static str| -> &'static str {
+            if count > 0 {
+                mark
+            } else {
+                ""
+            }
+        };
+
+        Box::new(format!(
+            "{}{}{}{}",
+            get_ico(status.staged, "●"),
+            get_ico(status.modified, "✚"),
+            get_ico(status.untracked, "…"),
+            get_ico(status.conflicted, "✖")
+        ))
+    }
+
+    fn print(&self) {
+        print!(
+            "on {}({}){}",
+            self.branch_string(),
+            Colour::Blue.paint(self.status_string().to_string()),
+            self.ahead_behind_string()
+        )
+    }
 }
 
 fn main() {
-    let repo = GitRepo::new(&std::env::current_dir().unwrap()).unwrap();
+    let repo = GitRepo::new(&std::env::current_dir().unwrap());
+    if repo.is_none() {
+        std::process::exit(0);
+    }
+    let repo = repo.unwrap();
 
-    println!(
-        "{} {:?} {:?} {:?}",
-        repo.branch().unwrap(),
-        repo.status().unwrap(),
-        repo.state(),
-        repo.get_ahead_behind()
-    );
+    repo.print();
 }

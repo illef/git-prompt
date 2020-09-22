@@ -8,3 +8,4 @@ edition = "2018"
 
 [dependencies]
 git2 = { version = "0.13.11", default-features = false }
+ansi_term = "0.12.1"
