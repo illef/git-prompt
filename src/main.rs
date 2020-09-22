@@ -2,6 +2,7 @@ use git2::{ErrorCode::UnbornBranch, Repository, RepositoryState, Status};
 
 use std::path::{Path, PathBuf};
 
+//borrow from https://github.com/starship/starship/blob/master/src/modules/git_status.rs
 #[derive(Default, Debug, Copy, Clone)]
 struct RepoStatus {
     conflicted: usize,
@@ -49,23 +50,18 @@ impl RepoStatus {
 
 pub struct GitRepo {
     /// The current working directory that starship is being called in.
-    current_dir: PathBuf,
     repo: Repository,
 }
 
 impl GitRepo {
     pub fn new(path: &Path) -> Option<Self> {
         if let Ok(repo) = Repository::discover(path) {
-            Some(Self {
-                current_dir: path.to_owned(),
-                repo,
-            })
+            Some(Self { repo })
         } else {
             None
         }
     }
 
-    //borrow from https://github.com/starship/starship/blob/a245d54cdbbcf5480571bce1a055299b815c6109/src/context.rs#L349
     fn branch(&self) -> Option<String> {
         let head = match self.repo.head() {
             Ok(reference) => reference,
@@ -94,6 +90,22 @@ impl GitRepo {
         let shorthand = head.shorthand();
 
         shorthand.map(std::string::ToString::to_string)
+    }
+
+    fn state(&self) -> RepositoryState {
+        return self.repo.state();
+    }
+
+    fn get_ahead_behind(&self) -> Result<(usize, usize), git2::Error> {
+        let branch_name = self.branch().ok_or(git2::Error::from_str("no branch"))?;
+        let branch_object = self.repo.revparse_single(&branch_name)?;
+        let tracking_branch_name = format!("{}@{{upstream}}", branch_name);
+        let tracking_object = self.repo.revparse_single(&tracking_branch_name)?;
+
+        let branch_oid = branch_object.id();
+        let tracking_oid = tracking_object.id();
+
+        self.repo.graph_ahead_behind(branch_oid, tracking_oid)
     }
 
     fn status(&self) -> Result<RepoStatus, git2::Error> {
@@ -125,5 +137,11 @@ impl GitRepo {
 fn main() {
     let repo = GitRepo::new(&std::env::current_dir().unwrap()).unwrap();
 
-    println!("{} {:?}", repo.branch().unwrap(), repo.status().unwrap());
+    println!(
+        "{} {:?} {:?} {:?}",
+        repo.branch().unwrap(),
+        repo.status().unwrap(),
+        repo.state(),
+        repo.get_ahead_behind()
+    );
 }
