@@ -1,6 +1,51 @@
-use git2::{ErrorCode::UnbornBranch, Repository, RepositoryState};
+use git2::{ErrorCode::UnbornBranch, Repository, RepositoryState, Status};
 
 use std::path::{Path, PathBuf};
+
+#[derive(Default, Debug, Copy, Clone)]
+struct RepoStatus {
+    conflicted: usize,
+    deleted: usize,
+    renamed: usize,
+    modified: usize,
+    staged: usize,
+    untracked: usize,
+}
+
+impl RepoStatus {
+    fn is_conflicted(status: Status) -> bool {
+        status.is_conflicted()
+    }
+
+    fn is_deleted(status: Status) -> bool {
+        status.is_wt_deleted() || status.is_index_deleted()
+    }
+
+    fn is_renamed(status: Status) -> bool {
+        status.is_wt_renamed() || status.is_index_renamed()
+    }
+
+    fn is_modified(status: Status) -> bool {
+        status.is_wt_modified()
+    }
+
+    fn is_staged(status: Status) -> bool {
+        status.is_index_modified() || status.is_index_new()
+    }
+
+    fn is_untracked(status: Status) -> bool {
+        status.is_wt_new()
+    }
+
+    fn add(&mut self, s: Status) {
+        self.conflicted += RepoStatus::is_conflicted(s) as usize;
+        self.deleted += RepoStatus::is_deleted(s) as usize;
+        self.renamed += RepoStatus::is_renamed(s) as usize;
+        self.modified += RepoStatus::is_modified(s) as usize;
+        self.staged += RepoStatus::is_staged(s) as usize;
+        self.untracked += RepoStatus::is_untracked(s) as usize;
+    }
+}
 
 pub struct GitRepo {
     /// The current working directory that starship is being called in.
@@ -50,14 +95,35 @@ impl GitRepo {
 
         shorthand.map(std::string::ToString::to_string)
     }
+
+    fn status(&self) -> Result<RepoStatus, git2::Error> {
+        let mut status_options = git2::StatusOptions::new();
+
+        let mut repo_status = RepoStatus::default();
+
+        status_options
+            .include_untracked(true)
+            .renames_from_rewrites(true)
+            .renames_head_to_index(true)
+            .include_unmodified(true);
+
+        let statuses = self.repo.statuses(Some(&mut status_options))?;
+
+        if statuses.is_empty() {
+            return Err(git2::Error::from_str("Repo has no status"));
+        }
+
+        statuses
+            .iter()
+            .map(|s| s.status())
+            .for_each(|status| repo_status.add(status));
+
+        Ok(repo_status)
+    }
 }
 
 fn main() {
-    println!(
-        "{}",
-        GitRepo::new(&std::env::current_dir().unwrap())
-            .unwrap()
-            .branch()
-            .unwrap()
-    );
+    let repo = GitRepo::new(&std::env::current_dir().unwrap()).unwrap();
+
+    println!("{} {:?}", repo.branch().unwrap(), repo.status().unwrap());
 }
