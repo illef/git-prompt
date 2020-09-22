@@ -158,7 +158,7 @@ impl GitRepo {
         let (ahead, behind) = ahead_behind.unwrap();
 
         if ahead == 0 && behind == 0 {
-            return Box::new(" ✔");
+            return Box::new(" ");
         }
 
         let get_mark = |count: usize, mark: &'static str| -> String {
@@ -183,7 +183,7 @@ impl GitRepo {
         }
         let status = status.unwrap();
         if status.is_clean() {
-            return Box::new(Colour::Green.paint("✔"));
+            return Box::new(Colour::Green.paint(""));
         }
 
         let get_ico = |count: usize, mark: &'static str| -> &'static str {
@@ -196,10 +196,10 @@ impl GitRepo {
 
         Box::new(format!(
             "{}{}{}{}",
-            get_ico(status.staged, "●"),
-            get_ico(status.modified, "✚"),
-            get_ico(status.untracked, "…"),
-            get_ico(status.conflicted, "✖")
+            Colour::Green.paint(get_ico(status.staged, "")),
+            Colour::Yellow.paint(get_ico(status.modified, "")),
+            get_ico(status.untracked, "?"),
+            Colour::Red.paint(get_ico(status.conflicted, ""))
         ))
     }
 
