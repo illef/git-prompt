@@ -163,7 +163,7 @@ impl GitRepo {
 
         let get_mark = |count: usize, mark: &'static str| -> String {
             if count > 0 {
-                format!("{}{}", mark, count)
+                format!("{}{}", Colour::Yellow.paint(mark), count)
             } else {
                 String::default()
             }
@@ -174,6 +174,23 @@ impl GitRepo {
             get_mark(ahead, "↑"),
             get_mark(behind, "↓")
         ))
+    }
+
+    fn steate_string(&self) -> &'static str {
+        match self.state() {
+            RepositoryState::Clean => "",
+            RepositoryState::Merge => "|merge|",
+            RepositoryState::Revert => "|revert|",
+            RepositoryState::RevertSequence => "|revert-sequence|",
+            RepositoryState::CherryPick => "|cherry-pick|",
+            RepositoryState::CherryPickSequence => "|cherry-pick sequence|",
+            RepositoryState::Bisect => "|bitsect|",
+            RepositoryState::Rebase => "|rebase|",
+            RepositoryState::RebaseInteractive => "|rebase-interactive|",
+            RepositoryState::RebaseMerge => "|rebase-merge|",
+            RepositoryState::ApplyMailbox => "|apply-mailbox|",
+            RepositoryState::ApplyMailboxOrRebase => "|apply-mailbox-rebase|",
+        }
     }
 
     fn status_string(&self) -> Box<dyn Display> {
@@ -196,18 +213,19 @@ impl GitRepo {
 
         Box::new(format!(
             "{}{}{}{}",
-            Colour::Green.paint(get_ico(status.staged, "")),
-            Colour::Yellow.paint(get_ico(status.modified, "")),
-            get_ico(status.untracked, "?"),
-            Colour::Red.paint(get_ico(status.conflicted, ""))
+            Colour::Green.paint(get_ico(status.staged, "s")),
+            Colour::Yellow.paint(get_ico(status.modified, "m")),
+            Colour::Blue.paint(get_ico(status.untracked, "u")),
+            Colour::Red.paint(get_ico(status.conflicted, "c"))
         ))
     }
 
     fn print(&self) {
         print!(
-            "on {}({}){}",
+            "on {}({}){}{}",
             self.branch_string(),
             Colour::Blue.paint(self.status_string().to_string()),
+            self.steate_string(),
             self.ahead_behind_string()
         )
     }
