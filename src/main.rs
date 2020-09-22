@@ -126,15 +126,11 @@ impl GitRepo {
 
         status_options
             .include_untracked(true)
-            .renames_from_rewrites(true)
-            .renames_head_to_index(true)
-            .include_unmodified(true);
+            .renames_from_rewrites(false)
+            .renames_head_to_index(false)
+            .include_unmodified(false);
 
         let statuses = self.repo.statuses(Some(&mut status_options))?;
-
-        if statuses.is_empty() {
-            return Err(git2::Error::from_str("Repo has no status"));
-        }
 
         statuses
             .iter()
