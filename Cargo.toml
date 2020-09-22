@@ -1,5 +1,5 @@
 [package]
-name = "git-status"
+name = "git-prompt"
 version = "0.1.0"
 authors = ["illef <sai.illef@gmail.com>"]
 edition = "2018"
