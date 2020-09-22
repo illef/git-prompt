@@ -172,20 +172,26 @@ impl GitRepo {
         ))
     }
 
-    fn steate_string(&self) -> &'static str {
-        match self.state() {
+    fn steate_string(&self) -> String {
+        let state_str = match self.state() {
             RepositoryState::Clean => "",
-            RepositoryState::Merge => "|merge|",
-            RepositoryState::Revert => "|revert|",
-            RepositoryState::RevertSequence => "|revert-sequence|",
-            RepositoryState::CherryPick => "|cherry-pick|",
-            RepositoryState::CherryPickSequence => "|cherry-pick sequence|",
-            RepositoryState::Bisect => "|bitsect|",
-            RepositoryState::Rebase => "|rebase|",
-            RepositoryState::RebaseInteractive => "|rebase-interactive|",
-            RepositoryState::RebaseMerge => "|rebase-merge|",
-            RepositoryState::ApplyMailbox => "|apply-mailbox|",
-            RepositoryState::ApplyMailboxOrRebase => "|apply-mailbox-rebase|",
+            RepositoryState::Merge => "merge",
+            RepositoryState::Revert => "revert",
+            RepositoryState::RevertSequence => "revert-sequence",
+            RepositoryState::CherryPick => "cherry-pick",
+            RepositoryState::CherryPickSequence => "cherry-pick sequence",
+            RepositoryState::Bisect => "bitsect",
+            RepositoryState::Rebase => "rebase",
+            RepositoryState::RebaseInteractive => "rebase-i",
+            RepositoryState::RebaseMerge => "rebase-merge",
+            RepositoryState::ApplyMailbox => "apply-mailbox",
+            RepositoryState::ApplyMailboxOrRebase => "apply-mailbox-rebase",
+        };
+
+        if state_str.is_empty() {
+            "".to_owned()
+        } else {
+            format!("|{}|", Colour::Blue.paint(state_str))
         }
     }
 
