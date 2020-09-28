@@ -222,13 +222,33 @@ impl GitRepo {
         ))
     }
 
-    pub fn print(&self) {
+    fn get_stash_count(&mut self) -> usize {
+        let mut count = 0;
+        self.repo
+            .stash_foreach(|_, _, _| {
+                count += 1;
+                true
+            })
+            .unwrap_or_default();
+
+        count
+    }
+
+    fn stash_count_string(&mut self) -> String {
+        match self.get_stash_count() {
+            0 => "".to_owned(),
+            count => format!(" {}({})", Colour::Blue.paint("S"), count),
+        }
+    }
+
+    pub fn print(&mut self) {
         print!(
-            "on {}({}){}{}",
+            "on {}({}){}{}{}",
             self.branch_string(),
             Colour::Blue.paint(self.status_string().to_string()),
             self.steate_string(),
-            self.ahead_behind_string()
+            self.ahead_behind_string(),
+            self.stash_count_string()
         )
     }
 }
