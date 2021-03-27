@@ -143,6 +143,7 @@ impl GitRepo {
     fn branch_string(&self) -> impl Display {
         Colour::Cyan
             .bold()
+            .italic()
             .paint(self.branch().or(Some("unknown".to_owned())).unwrap())
     }
 
