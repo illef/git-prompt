@@ -4,8 +4,13 @@ use git::*;
 
 fn main() {
     let repo = GitRepo::new(&std::env::current_dir().unwrap());
-    repo.and_then::<(), _>(|mut repo| {
+    if repo.is_none() {
+        return;
+    }
+    let mut repo = repo.unwrap();
+    if std::env::args().filter(|arg| arg == "--json").next() == None {
         repo.print();
-        None
-    });
+    } else {
+        print!("{}", serde_json::to_string(&repo.into_info()).unwrap());
+    }
 }

@@ -1,11 +1,12 @@
 use ansi_term::Colour;
 use git2::{ErrorCode::UnbornBranch, Repository, RepositoryState, Status};
 
+use serde::Serialize;
 use std::fmt::Display;
 use std::path::Path;
 
 //borrow from https://github.com/starship/starship/blob/master/src/modules/git_status.rs
-#[derive(Default, Debug, Copy, Clone)]
+#[derive(Default, Debug, Copy, Clone, Serialize)]
 struct RepoStatus {
     pub conflicted: usize,
     pub deleted: usize,
@@ -59,6 +60,16 @@ impl RepoStatus {
     }
 }
 
+#[derive(Serialize)]
+pub struct GitRepoInfo {
+    branch_name: Option<String>,
+    status: Option<RepoStatus>,
+    state: String,
+    ahead: usize,
+    behind: usize,
+    stash: usize,
+}
+
 pub struct GitRepo {
     /// The current working directory that starship is being called in.
     repo: Repository,
@@ -70,6 +81,18 @@ impl GitRepo {
             Some(Self { repo })
         } else {
             None
+        }
+    }
+
+    pub fn into_info(mut self) -> GitRepoInfo {
+        let (ahead, behind) = self.get_ahead_behind().unwrap_or((0, 0));
+        GitRepoInfo {
+            branch_name: self.branch(),
+            status: self.status().ok(),
+            state: self.state_string(),
+            ahead,
+            behind,
+            stash: self.get_stash_count(),
         }
     }
 
@@ -173,7 +196,7 @@ impl GitRepo {
         ))
     }
 
-    fn steate_string(&self) -> String {
+    fn state_string(&self) -> String {
         let state_str = match self.state() {
             RepositoryState::Clean => "",
             RepositoryState::Merge => "merge",
@@ -247,7 +270,7 @@ impl GitRepo {
             "on {}({}){}{}{}",
             self.branch_string(),
             Colour::Blue.paint(self.status_string().to_string()),
-            self.steate_string(),
+            self.state_string(),
             self.ahead_behind_string(),
             self.stash_count_string()
         )
