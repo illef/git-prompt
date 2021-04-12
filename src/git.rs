@@ -215,7 +215,7 @@ impl GitRepo {
         if state_str.is_empty() {
             "".to_owned()
         } else {
-            format!("|{}|", Colour::Blue.paint(state_str))
+            state_str.to_owned()
         }
     }
 
@@ -266,11 +266,19 @@ impl GitRepo {
     }
 
     pub fn print(&mut self) {
+        let state_str_with_color = {
+            let state_str: String = self.state_string();
+            if state_str.len() == 0 {
+                state_str
+            } else {
+                format!("|{}|", Colour::Blue.paint(self.state_string()))
+            }
+        };
         print!(
             "on {}({}){}{}{}",
             self.branch_string(),
             Colour::Blue.paint(self.status_string().to_string()),
-            self.state_string(),
+            state_str_with_color,
             self.ahead_behind_string(),
             self.stash_count_string()
         )
